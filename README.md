@@ -10,8 +10,8 @@ The c-score for each Ab-Ag complex and their accuracy label (discard, carry forw
 
 ## Files  
 
-### create_environment.sh
-Creates and enters into a virtual environment with all dependent packages installed. 
+### install_anarci.sh
+Installs anarci into the current environment. 
 
 ### cscore_generator.py 
 Takes a folder containing the PDB files of docking complexes to generate c-scores for. Calculates c-scores from contacting residue pairs and returns labels for each complex to discard or carry forward to further analysis in the results folder. 
