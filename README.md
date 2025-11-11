@@ -1,9 +1,9 @@
 ## Welcome! 
 This is a scoring system for assessing antibody-antigen docking quality by assessing the contact preferences (c-score) of each contacting residue pairs. Contact preferences are based on interaction residue frequencies across Ab-Ag complexes in the AbDb database (http://www.abybank.org/abdb/). 
 
-To get started, create a virtual environment with the required packages in requirements.txt installed. Note: this doesn't include anarci, which needs to be separately installed as per instructions in the repository (https://github.com/oxpig/ANARCI). **You can run the command `source create_environment.sh` which does all of this for you and creates an environment with anarci.** 
+To get started, create a virtual environment with the required packages in requirements.txt installed. This file doesn't include anarci, which needs to be separately installed as per instructions in the repository (https://github.com/oxpig/ANARCI). You can run the file `create_environment.sh` which does all of this for you and installs anarci. (Note: anarci uses distutils, which was removed from python 3.12. Will not work with newer Python versions.)
 
-Then, run the file cscore_generator.py, specifying the `-b` option with the path to the PDB files (e.g. `python cscore_generator.py -b path_with_example_files`). `-h` for details. 
+Once all the packages are installed, run the file cscore_generator.py, specifying the `-b` option with the path to the PDB files (e.g. `python cscore_generator.py -b path_with_example_files`). `-h` for details. 
 
 The c-score for each Ab-Ag complex and their accuracy label (discard, carry forward, or carry forward with priority) will be available as a csv file in the results folder. 
 
