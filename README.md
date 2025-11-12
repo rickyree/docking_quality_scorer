@@ -6,7 +6,7 @@ Clone the repository and create a virtual environment with the required packages
 ```bash
 git clone https://github.com/rickyree/docking_quality_scorer.git
 cd docking_quality_scorer
-bash setup.py
+bash setup.sh
 conda activate docking_quality_scorer
 ```
 
