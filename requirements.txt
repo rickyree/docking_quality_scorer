@@ -1,3 +1,5 @@
+#anarci, biopython and hmmer not included, these installations are detailed in the setup.sh file. 
+
 matplotlib
 numpy
 pandas
