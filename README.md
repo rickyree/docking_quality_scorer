@@ -1,5 +1,5 @@
 ## Welcome! 
-This is a scoring system for assessing antibody-antigen docking quality by assessing the contact preferences (c-score) of each contacting residue pairs. Contact preferences are based on interaction residue frequencies across Ab-Ag complexes in the AbDb database (http://www.abybank.org/abdb/). 
+This is a scoring system for assessing the docking quality of computationally generated antibody-antigen complexes by assessing the contact preferences (c-score) of each contacting residue pairs. Contact preferences are based on interaction residue frequencies across Ab-Ag complexes in the AbDb database (http://www.abybank.org/abdb/). 
 
 ### To get started: 
 Clone the repository and create a virtual environment (Python 3.11) with the required packages installed: 
