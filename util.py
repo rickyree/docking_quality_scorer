@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from Bio.PDB import NeighborSearch 
 from collections import Counter 
 
+#script containing various functions. 
 
 
 aa_keys = {"ALA": "A", "ARG": "R", "ASN": "N", "ASP": "D", "CYS": "C", "GLU": "E", "GLN": "Q", "GLY": "G", "HIS": "H", "ILE": "I", "LEU": "L", "LYS": "K", "MET": "M", "PHE": "F", "PRO": "P", "SER": "S", "THR": "T", "TRP": "W", "TYR": "Y", "VAL": "V"}
