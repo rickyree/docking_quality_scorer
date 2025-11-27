@@ -28,7 +28,7 @@ Creates conda environment with Python 3.11 and installs required packages.
 Takes a folder containing the PDB files of docking complexes to generate c-scores for. Calculates c-scores from contacting residue pairs and returns labels for each complex to discard or carry forward to further analysis in the results folder. 
 
 ### results 
-Results of running cscore_generator.py will be stored here. After running, 2 files are generated: 
+Folder containing results. Results of running cscore_generator.py will be stored here. After running, this folder with 2 files are generated: 
 * generated_scores.csv: csv file of all c-scores and labels for each complex. 
 * pie.png: pie chart showing the proportions of complex labels.  
 
