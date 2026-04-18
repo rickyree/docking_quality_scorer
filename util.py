@@ -3,7 +3,7 @@ import numpy as np
 from math import *
 import os 
 from Bio.PDB import PDBParser 
-import anarci 
+from anarcii import Anarcii
 from difflib import SequenceMatcher 
 import matplotlib.pyplot as plt 
 from Bio.PDB import NeighborSearch 
@@ -92,111 +92,113 @@ def searchdir_files(mypath):
 
 
 
-#classifying PDBs into heavy, light and antigen chains and identifying CDR regions: 
-def pdb_label(file): 
-    #parse pdb file 
-    pdbparser = PDBParser(QUIET = True) 
-    structure = pdbparser.get_structure('structure1', file) 
+#classifying PDBs into heavy, light and antigen chains and identifying CDR regions:
+def pdb_label(file):
+    pdbparser = PDBParser(QUIET=True)
+    structure = pdbparser.get_structure('structure1', file)
 
-    '''if len([chain for chain in structure.get_chains()]) < 3: 
-        print("Minimum of 3 chains required for heavy, light and antigen chain. ") 
-        return '', '', '', '', '', True  '''
-
-    #concatenated sequence of all residues in the structure: 
-    seq = '' 
-
-    #analyzing sequence with ANARCI:    
-    for residue in structure.get_residues(): 
-        if residue.get_resname() in list(aa_keys.keys()): 
+    # Build per-chain sequence dict for anarcii
+    chain_seqs = {}
+    for chain in structure.get_chains():
+        seq = ''
+        for residue in chain.get_residues():
+            if residue.get_resname() in list(aa_keys.keys()):
                 seq = ''.join([seq, aa_keys[residue.get_resname()]])
-    sequences = [('asdf', seq)]
+        if seq:
+            chain_seqs[chain.get_id()] = seq
 
-    numbering, alignment_details, _ = anarci.anarci(sequences, scheme = 'IMGT', output = False) 
-    return structure, numbering, alignment_details 
+    runner = Anarcii(verbose=False)
+    runner.number(chain_seqs)
+    numbering, alignment_details, _ = runner.to_legacy()
+    return structure, numbering, alignment_details
 
 
-def chain_and_CDR_allocation(structure, numbering, alignment_details): 
-    #df containing information of all the residues, their chains (H/L), position, IMGT number and CDR region: 
-    residues_sorted = pd.DataFrame(columns = ['residue', 'chain', 'pos', 'IMGT', 'CDR']) 
+def chain_and_CDR_allocation(structure, numbering, alignment_details):
+    #df containing information of all the residues, their chains (H/L), position, IMGT number and CDR region:
+    residues_sorted = pd.DataFrame(columns=['residue', 'chain', 'pos', 'IMGT', 'CDR'])
 
-    #allocate residue and its position 
-    for residue in structure.get_residues(): 
-        if residue.get_resname() in list(aa_keys.keys()): 
-            residues_sorted.loc[len(residues_sorted), 'pos'] = residue.get_id()[1] 
-            residues_sorted.loc[len(residues_sorted)-1, 'residue'] = aa_keys[residue.get_resname()] 
+    #allocate residue and its position
+    for residue in structure.get_residues():
+        if residue.get_resname() in list(aa_keys.keys()):
+            residues_sorted.loc[len(residues_sorted), 'pos'] = residue.get_id()[1]
+            residues_sorted.loc[len(residues_sorted)-1, 'residue'] = aa_keys[residue.get_resname()]
 
-    residue = [n for n in residues_sorted['residue']] 
+    residue = [n for n in residues_sorted['residue']]
 
-    #to be concatenated with H or L sequence: 
-    H = '' 
+    # Build per-chain global offsets so per-chain query_start/end map to residues_sorted indices
+    chain_global_start = {}
+    offset = 0
+    for chain in structure.get_chains():
+        chain_global_start[chain.get_id()] = offset
+        for res in chain.get_residues():
+            if res.get_resname() in list(aa_keys.keys()):
+                offset += 1
+
+    H = ''
     L = ''
 
-    #for each chain (H and L): 
-    for x in range(len(numbering[0])): 
-        #store IMGT numbering: 
-        IMGTnumbers = [n[0][0] for n in numbering[0][x][0]] 
-        #store residue if applicable to IMGT number: 
-        IMGTresidues = [n[1] for n in numbering[0][x][0]] 
-        
-        if H == '': 
-            hflag = True 
-        else: 
-            hflag = False 
-        
-        if L == '': 
-            lflag = True 
-        else: 
-            lflag = False 
-        
-        #set r as starting residue number of H or L chain: 
-        #set a and n as 0 to work its way through the IMGT labelings: 
-        r = alignment_details[0][x]['query_start'] 
+    for x in range(len(numbering)):
+        if numbering[x] is None:
+            continue
+
+        # anarcii2 legacy: numbering[x] = [(numbering_list, query_start, query_end)]
+        IMGTnumbers = [int(n[0][0]) for n in numbering[x][0][0]]
+        IMGTresidues = [n[1] for n in numbering[x][0][0]]
+
+        chain_id = alignment_details[x][0]['query_name']
+        chain_type = alignment_details[x][0]['chain_type']
+        global_offset = chain_global_start.get(chain_id, 0)
+
+        if H == '':
+            hflag = True
+        else:
+            hflag = False
+
+        if L == '':
+            lflag = True
+        else:
+            lflag = False
+
+        r = global_offset + alignment_details[x][0]['query_start']
         n = 0
-        a = 0 
+        a = 0
 
-        #until r reaches end of chain: 
-        while r < alignment_details[0][x]['query_end']: 
-            if IMGTresidues[a] == residue[r]: 
+        while r < global_offset + alignment_details[x][0]['query_end'] and a < len(IMGTresidues):
+            if IMGTresidues[a] == residue[r]:
 
-                #add IMGT and chain label to residues_sorted table: 
-                residues_sorted.loc[r, 'IMGT'] = IMGTnumbers[n] 
-                residues_sorted.loc[r, 'chain'] = alignment_details[0][x]['chain_type'] 
+                residues_sorted.loc[r, 'IMGT'] = IMGTnumbers[n]
+                residues_sorted.loc[r, 'chain'] = chain_type
 
-                #if K change to L 
-                if residues_sorted.loc[r, 'chain'] == 'K': 
+                if residues_sorted.loc[r, 'chain'] == 'K':
                     residues_sorted.loc[r, 'chain'] = 'L'
 
-                #concatenate the residue with the H/L sequence: 
-                if residues_sorted.loc[r, 'chain'] == 'H' and hflag == True: 
+                if residues_sorted.loc[r, 'chain'] == 'H' and hflag == True:
                     H = ''.join([H, residues_sorted.loc[r, 'residue']])
-                if residues_sorted.loc[r, 'chain'] == 'L' and lflag == True: 
-                    L = ''.join([L, residues_sorted.loc[r, 'residue']]) 
-                                
-                #according to IMGT numbering: 
-                if 1 <= IMGTnumbers[n] <= 26: 
-                    residues_sorted.loc[r, 'CDR'] = 'FR1' 
-                elif 27 <= IMGTnumbers[n] <= 38: 
-                    residues_sorted.loc[r, 'CDR'] = 'CDR1' 
-                elif 39 <= IMGTnumbers[n] <= 55: 
-                    residues_sorted.loc[r, 'CDR'] = 'FR2' 
-                elif 56 <= IMGTnumbers[n] <= 65: 
-                    residues_sorted.loc[r, 'CDR'] = 'CDR2' 
-                elif 66 <= IMGTnumbers[n] <= 104: 
-                    residues_sorted.loc[r, 'CDR'] = 'FR3' 
-                elif 105 <= IMGTnumbers[n] <= 117: 
-                    residues_sorted.loc[r, 'CDR'] = 'CDR3' 
-                elif 118 <= IMGTnumbers[n] <= 128: 
-                    residues_sorted.loc[r, 'CDR'] = 'FR4' 
+                if residues_sorted.loc[r, 'chain'] == 'L' and lflag == True:
+                    L = ''.join([L, residues_sorted.loc[r, 'residue']])
 
+                if 1 <= IMGTnumbers[n] <= 26:
+                    residues_sorted.loc[r, 'CDR'] = 'FR1'
+                elif 27 <= IMGTnumbers[n] <= 38:
+                    residues_sorted.loc[r, 'CDR'] = 'CDR1'
+                elif 39 <= IMGTnumbers[n] <= 55:
+                    residues_sorted.loc[r, 'CDR'] = 'FR2'
+                elif 56 <= IMGTnumbers[n] <= 65:
+                    residues_sorted.loc[r, 'CDR'] = 'CDR2'
+                elif 66 <= IMGTnumbers[n] <= 104:
+                    residues_sorted.loc[r, 'CDR'] = 'FR3'
+                elif 105 <= IMGTnumbers[n] <= 117:
+                    residues_sorted.loc[r, 'CDR'] = 'CDR3'
+                elif 118 <= IMGTnumbers[n] <= 128:
+                    residues_sorted.loc[r, 'CDR'] = 'FR4'
 
-                #move on to next residue: 
-                r += 1 
-                a += 1 
-                n += 1 
-        
-            else: 
-                a += 1 
-                n += 1 
+                r += 1
+                a += 1
+                n += 1
+
+            else:
+                a += 1
+                n += 1
     return H, L, residues_sorted
 
 
@@ -374,6 +376,8 @@ def export_files(obtained_scores):
     results.to_csv('results/results.csv') 
 
 
+# pi chart of labels 
+
 def labels_pichart(obtained_scores): 
     label_counts = Counter([x[2] for x in obtained_scores])
 
@@ -388,4 +392,20 @@ def labels_pichart(obtained_scores):
     )
     plt.title('Label Distribution')
     plt.tight_layout()
-    plt.savefig('results/pie.png') 
+    plt.savefig('results/pie.png')
+
+
+# cumulative distribution function (CDF) of scores 
+
+def scores_cdf(obtained_scores):
+    scores = sorted([x[1] for x in obtained_scores])
+    cdf = np.arange(1, len(scores) + 1) / len(scores)
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(scores, cdf, linewidth=2)
+    plt.xlabel('c-score')
+    plt.ylabel('Cumulative probability')
+    plt.title('CDF of c-scores')
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig('results/cdf.png')

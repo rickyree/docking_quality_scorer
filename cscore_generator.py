@@ -121,6 +121,9 @@ def main():
     #export pi chart of labels: 
     labels_pichart(obtained_scores) 
 
+    #export cdf of scores: 
+    scores_cdf(obtained_scores)
+
     
 
 
